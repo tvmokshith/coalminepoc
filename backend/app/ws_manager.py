@@ -33,5 +33,19 @@ class WebSocketManager:
         for cid in dead:
             self.disconnect(cid)
 
+    async def broadcast_batch(self, updates: list[dict]):
+        """Send all updates as a single batch frame per client."""
+        if not updates or not self.active_connections:
+            return
+        msg = json.dumps({"type": "batch", "updates": updates})
+        dead = []
+        for cid, ws in self.active_connections.items():
+            try:
+                await ws.send_text(msg)
+            except Exception:
+                dead.append(cid)
+        for cid in dead:
+            self.disconnect(cid)
+
 
 ws_manager = WebSocketManager()

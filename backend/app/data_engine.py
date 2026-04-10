@@ -58,8 +58,8 @@ def _inv_status(value: float, green_below: float, red_above: float) -> KPIStatus
 def _add_history(mine_id: str, kpi_name: str, value: float, ts: str):
     hist = state.KPI_HISTORY[mine_id].setdefault(kpi_name, [])
     hist.append({"value": round(value, 2), "timestamp": ts})
-    if len(hist) > 500:
-        state.KPI_HISTORY[mine_id][kpi_name] = hist[-500:]
+    if len(hist) > 200:
+        state.KPI_HISTORY[mine_id][kpi_name] = hist[-200:]
 
 
 def _add_sensor_reading(eq_id: str, mine_id: str, ts: str, status: str, utilization: float):
@@ -78,8 +78,8 @@ def _add_sensor_reading(eq_id: str, mine_id: str, ts: str, status: str, utilizat
         "oil_level": round(max(40, min(100, _jitter(85 - _tick * 0.01, 0.02))), 1),
         "cycle_time": round(_jitter(45 + (100 - utilization) * 0.5, 0.06), 1) if status == "running" else 0,
     })
-    if len(readings) > 200:
-        state.EQUIPMENT_SENSORS[eq_id] = readings[-200:]
+    if len(readings) > 100:
+        state.EQUIPMENT_SENSORS[eq_id] = readings[-100:]
 
 
 def _maybe_add_anomaly(mine_id: str, kpi_name: str, value: float, status: KPIStatus, ts: str):
@@ -141,8 +141,8 @@ async def _update_cycle():
                     location_tag=f"{mine.name.split()[0]}-Bay-{random.randint(1,12)}",
                 )
                 state.ALERTS.insert(0, alert)
-                if len(state.ALERTS) > 200:
-                    state.ALERTS = state.ALERTS[:200]
+                if len(state.ALERTS) > 100:
+                    state.ALERTS = state.ALERTS[:100]
                 ws_updates.append({"type": "alert", "data": alert.model_dump()})
                 # Generate advisory for breakdown
                 adv = generate_advisory(mine_id, mine.name, "Equipment Utilization",
@@ -176,8 +176,9 @@ async def _update_cycle():
             eq.position["x"] += random.uniform(-0.5, 0.5)
             eq.position["z"] += random.uniform(-0.5, 0.5)
 
-            # Generate sensor reading for every equipment every tick
-            _add_sensor_reading(eq.id, mine_id, ts, eq.status.value, eq.utilization)
+            # Generate sensor reading every other tick to halve memory writes
+            if _tick % 2 == 0:
+                _add_sensor_reading(eq.id, mine_id, ts, eq.status.value, eq.utilization)
 
         running_count = sum(1 for e in mine_eq if e.status == EquipmentStatus.RUNNING)
         running_ratio = running_count / max(total_eq, 1)
@@ -391,16 +392,15 @@ async def _update_cycle():
     if len(state.ADVISORIES) > 100:
         state.ADVISORIES = state.ADVISORIES[:100]
 
-    # Broadcast all updates
+    # Broadcast all updates in a single batch frame per client
     if ws_updates:
-        for update in ws_updates:
-            await ws_manager.broadcast(update)
+        await ws_manager.broadcast_batch(ws_updates)
 
 
 async def run_data_engine():
     """Continuously generate synthetic data."""
-    # Initial seed — run a few warm-up ticks
-    for _ in range(10):
+    # Initial seed — warm-up ticks
+    for _ in range(3):
         await _update_cycle()
         await asyncio.sleep(0.05)
 

@@ -167,9 +167,14 @@ for mine_id in MINES:
         last_incident_days=14, open_investigations=1
     )
 
+# Pre-index equipment by mine for O(1) lookup instead of full scan each call
+_EQUIPMENT_INDEX: dict[str, list[Equipment]] = {mid: [] for mid in MINES}
+for _eq in EQUIPMENT.values():
+    _EQUIPMENT_INDEX[_eq.mine_id].append(_eq)
+
 
 def get_mine_equipment(mine_id: str) -> list[Equipment]:
-    return [e for e in EQUIPMENT.values() if e.mine_id == mine_id]
+    return _EQUIPMENT_INDEX.get(mine_id, [])
 
 
 def get_aggregated_kpis() -> dict[str, float]:

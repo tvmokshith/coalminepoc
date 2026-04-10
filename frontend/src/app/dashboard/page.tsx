@@ -131,11 +131,18 @@ export default function DashboardPage() {
       const status = (agg?.status || 'green') as 'green' | 'amber' | 'red';
       const unit = def?.unit || '';
       const inverted = ['Downtime', 'Stripping Ratio', 'Cost Per Tonne', 'CO2 Emissions'].includes(name);
-      const delta = (Math.random() * 6 - 2).toFixed(2);
-      const deltaPositive = parseFloat(delta) > 0;
+      // Derive delta from actual history (last vs. 10 readings ago)
+      const hist = kpiHistory[def?.name || name] || kpiHistory[name];
+      let deltaNum = 0;
+      if (hist && hist.length >= 2) {
+        const prev = hist[Math.max(0, hist.length - 10)];
+        deltaNum = hist[hist.length - 1].value - prev.value;
+      }
+      const delta = deltaNum.toFixed(2);
+      const deltaPositive = deltaNum > 0;
       return { name: def?.name || name, value: value.toFixed(2), unit, status, meta, def, inverted, delta, deltaPositive };
     });
-  }, [aggregatedKpis, kpiDefs, kpis]);
+  }, [aggregatedKpis, kpiDefs, kpis, kpiHistory]);
 
   const productionByMine = mines.map((m) => ({
     name: m.name.replace(' Open Cast Mine', '').replace(' Mine', ''),

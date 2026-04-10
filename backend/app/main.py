@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.config import settings
 from app.data_engine import run_data_engine
 from app.routes import auth, mines, kpi, equipment, advisory, subsystems, ws
@@ -22,10 +23,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Astrikos Coal Mining Intelligence Platform",
     version="1.0.0",
-    description="Enterprise-grade coal mining command center with real-time monitoring, AI advisory, and digital twin",
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
