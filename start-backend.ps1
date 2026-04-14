@@ -8,4 +8,4 @@ if (Test-Path "$PSScriptRoot\.venv\Scripts\Activate.ps1") {
     & "$PSScriptRoot\.venv\Scripts\Activate.ps1"
 }
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 3169 --reload
